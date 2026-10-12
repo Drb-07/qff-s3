@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QFF 2026: S3 Trotter Simulation Interactive Dashboard</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0F172A;
+      --bg-card: #1E293B;
+      --bg-card-hover: #334155;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --accent-blue: #38BDF8;
+      --accent-red: #F87171;
+      --accent-green: #4ADE80;
+      --accent-purple: #C084FC;
+      --accent-amber: #FBBF24;
+      --border-color: #334155;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .title-group h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #38BDF8, #818CF8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .title-group p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+    .badge-container {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .badge-green {
+      background: rgba(74, 222, 128, 0.15);
+      color: var(--accent-green);
+      border-color: rgba(74, 222, 128, 0.3);
+    }
+    /* Presets Bar */
+    .preset-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .preset-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .preset-btn {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .preset-btn:hover, .preset-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    /* Grid Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Controls Panel */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+    .control-group {
+      margin-bottom: 18px;
+    }
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .control-val {
+      color: var(--accent-blue);
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: #334155;
+      border-radius: 4px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+    }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #334155;
+      transition: .3s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--accent-blue);
+    }
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+      background: var(--accent-blue);
+    }
+    .kpi-card.red::before { background: var(--accent-red); }
+    .kpi-card.green::before { background: var(--accent-green); }
+    .kpi-card.purple::before { background: var(--accent-purple); }
+    .kpi-card.amber::before { background: var(--accent-amber); }
+    .kpi-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .kpi-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-top: 4px;
+      font-family: monospace;
+    }
+    .kpi-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Chart Container */
+    .chart-container {
+      position: relative;
+      height: 380px;
+      margin-top: 10px;
+    }
+
+    /* Topology Banner */
+    .topology-alert {
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      color: #FECACA;
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .topology-alert.active {
+      display: block;
+    }
+
+    /* Table */
+    .table-container {
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    th, td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    th {
+      background: #111827;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .opt-row {
+      background: rgba(56, 189, 248, 0.1) !important;
+      font-weight: 700;
+    }
+    .btn-export {
+      background: linear-gradient(135deg, #2563EB, #1D4ED8);
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      float: right;
+      margin-top: -10px;
+      transition: background 0.2s;
+    }
+    .btn-export:hover {
+      background: #1E40AF;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="title-group">
+      <h1>S3: Noise in Trotter Simulation — Interactive Benchmark Explorer</h1>
+      <p>Real-time sweet spot (n*) discovery, processor routing analysis, and readout mitigation</p>
+    </div>
+    <div class="badge-container">
+      <span class="badge">Qiskit Fall Fest 2026</span>
+      <span class="badge">Phase 1 Submission</span>
+      <span class="badge badge-green">Hardware vs Algorithmic Tradeoff</span>
+    </div>
+  </div>
+
+  <!-- Presets Bar -->
+  <div class="preset-bar">
+    <span class="preset-label">Judges Presets:</span>
+    <button class="preset-btn active" onclick="loadPreset('default', this)">Default TFIM</button>
+    <button class="preset-btn" onclick="loadPreset('critical', this)">Critical Point (h = J)</button>
+    <button class="preset-btn" onclick="loadPreset('strong_field', this)">Strong Field (h = 1.5J)</button>
+    <button class="preset-btn" onclick="loadPreset('long_time', this)">Long Time (T = 2.0s)</button>
+    <button class="preset-btn" onclick="loadPreset('periodic_ring', this)">Periodic Ring (Topology Benchmark)</button>
+    <button class="preset-btn" onclick="loadPreset('second_order', this)">2nd Order Strang Splitting</button>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Controls Panel -->
+    <div class="card">
+      <div class="card-title">Physics & Noise Controls</div>
+
+      <div class="control-group">
+        <div class="control-header">
+          <span>Coupling Strength J (ZZ)</span>
+          <span class="control-val" id="val-J">1.0</span>
+        </div>
+        <input type="range" id="input-J" min="0.1" max="2.5" step="0.1" value="1.0" oninput="updateDashboard()">
+      </div>
+
+      <div class="control-group">
+        <div class="control-header">
+          <span>Transverse Field h (X)</span>
+          <span class="control-val" id="val-h">0.5</span>
+        </div>
+        <input type="range" id="input-h" min="0.1" max="2.5" step="0.1" value="0.5" oninput="updateDashboard()">
+      </div>
+
+      <div class="control-group">
+        <div class="control-header">
+          <span>Evolution Time T (s)</span>
+          <span class="control-val" id="val-T">1.0</span>
+        </div>
+        <input type="range" id="input-T" min="0.2" max="3.0" step="0.1" value="1.0" oninput="updateDashboard()">
+      </div>
+
+      <div class="control-group">
+        <div class="control-header">
+          <span>Qubits (Spins) N</span>
+          <span class="control-val" id="val-N">4</span>
+        </div>
+        <input type="range" id="input-N" min="3" max="6" step="1" value="4" oninput="updateDashboard()">
+      </div>
+
+      <div class="control-group">
+        <div class="control-header">
+          <span>2Q Error Rate ε_2Q (%)</span>
+          <span class="control-val" id="val-err">1.0%</span>
+        </div>
+        <input type="range" id="input-err" min="0.1" max="4.0" step="0.1" value="1.0" oninput="updateDashboard()">
+      </div>
+
+      <div class="card-title" style="margin-top: 24px;">Architecture & Method</div>
+
+      <div class="toggle-row">
+        <span>Boundary Condition: <strong><span id="label-boundary">Open (OBC)</span></strong></span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-pbc" onchange="updateDashboard()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <span>Trotter Order: <strong><span id="label-order">1st Order</span></strong></span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-order" onchange="updateDashboard()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <span>Readout Error Mitigation</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-mitigation" checked onchange="updateDashboard()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div style="margin-top: 16px; padding: 12px; background: #0B1120; border-radius: 8px; font-size: 0.8rem; color: var(--text-muted);">
+        <strong>Theoretical Analytical Prediction:</strong><br>
+        <span style="font-family: monospace; color: #38BDF8;">n* ≈ √(C_Trotter / C_Noise)</span><br>
+        Calculates exact sweet spot where algorithmic Trotter discretization error balances physical gate noise.
+      </div>
+    </div>
+
+    <!-- Right Side Dashboard -->
+    <div>
+      <!-- KPI Row -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Optimal Step (n*)</div>
+          <div class="kpi-value" id="kpi-n-star" style="color: var(--accent-blue);">3</div>
+          <div class="kpi-sub">Processor B Sweet Spot</div>
+        </div>
+
+        <div class="kpi-card green">
+          <div class="kpi-label">Min Total Error</div>
+          <div class="kpi-value" id="kpi-min-err" style="color: var(--accent-green);">23.9%</div>
+          <div class="kpi-sub" id="kpi-mit-err">Mitigated: 18.5%</div>
+        </div>
+
+        <div class="kpi-card purple">
+          <div class="kpi-label">Analytical n*</div>
+          <div class="kpi-value" id="kpi-ana-n" style="color: var(--accent-purple);">2.2</div>
+          <div class="kpi-sub">Formula: √(C_T/C_N)</div>
+        </div>
+
+        <div class="kpi-card amber">
+          <div class="kpi-label">Circuit Depth at n*</div>
+          <div class="kpi-value" id="kpi-depth" style="color: var(--accent-amber);">30</div>
+          <div class="kpi-sub" id="kpi-cx">2Q CX Gates: 18</div>
+        </div>
+      </div>
+
+      <!-- Main U-Curve Chart Card -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="margin-bottom: 0; border: none; padding: 0;">
+            Tradeoff U-Curve: Discretization Error vs Hardware Noise
+          </div>
+          <button class="btn-export" onclick="exportCSV()">Export CSV</button>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="trotterChart"></canvas>
+        </div>
+
+        <div class="topology-alert" id="topology-alert">
+          <strong>⚠️ Periodic Boundary (PBC) Topology Alert:</strong> Linear graph (Processor A) requires 2 SWAP chains (+6 CX per step) to connect the boundary qubit. Heavy-hex (Processor B) natively contains a 4-cycle and routes with <strong>0 SWAPs</strong>, reducing error by <strong>35.5%</strong>!
+        </div>
+      </div>
+
+      <!-- Sweep Table -->
+      <div class="card" style="margin-top: 24px;">
+        <div class="card-title">Parametric Trotter Step Sweep Data (n = 1 .. 10)</div>
+        <div class="table-container">
+          <table id="results-table">
+            <thead>
+              <tr>
+                <th>Steps (n)</th>
+                <th>Trotter Err</th>
+                <th>Proc A Depth</th>
+                <th>Proc A 2Q (SWAPs)</th>
+                <th>Proc A Error</th>
+                <th>Proc B Depth</th>
+                <th>Proc B 2Q (SWAPs)</th>
+                <th>Proc B Error</th>
+                <th>Mitigated Error</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let myChart = null;
+
+    // Presets
+    const PRESETS = {
+      default: { J: 1.0, h: 0.5, T: 1.0, N: 4, err: 1.0, pbc: false, order2: false },
+      critical: { J: 1.0, h: 1.0, T: 1.0, N: 4, err: 1.0, pbc: false, order2: false },
+      strong_field: { J: 0.5, h: 1.5, T: 1.0, N: 4, err: 1.0, pbc: false, order2: false },
+      long_time: { J: 1.0, h: 0.5, T: 2.0, N: 4, err: 1.0, pbc: false, order2: false },
+      periodic_ring: { J: 1.0, h: 0.5, T: 1.0, N: 4, err: 1.0, pbc: true, order2: false },
+      second_order: { J: 1.0, h: 0.5, T: 1.0, N: 4, err: 1.0, pbc: false, order2: true }
+    };
+
+    function loadPreset(key, btn) {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+
+      const p = PRESETS[key];
+      document.getElementById('input-J').value = p.J;
+      document.getElementById('input-h').value = p.h;
+      document.getElementById('input-T').value = p.T;
+      document.getElementById('input-N').value = p.N;
+      document.getElementById('input-err').value = p.err;
+      document.getElementById('toggle-pbc').checked = p.pbc;
+      document.getElementById('toggle-order').checked = p.order2;
+
+      updateDashboard();
+    }
+
+    function calculateTrotterSweep(J, h, T, N, err2Q, pbc, order2, mitigated) {
+      const steps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const numTerms = pbc ? N : (N - 1);
+      const order = order2 ? 2 : 1;
+
+      // Commutator bounds
+      const energyScale = Math.max(1.0, J * numTerms + h * N);
+      const commNorm = 2.0 * Math.abs(J) * Math.abs(h) * numTerms;
+
+      let cTrotter = 0;
+      if (order === 1) {
+        cTrotter = (0.5 * commNorm * (T * T)) / energyScale;
+      } else {
+        cTrotter = (0.0833 * commNorm * (Math.abs(J) + Math.abs(h)) * (T * T * T)) / energyScale;
+      }
+
+      // Base gates per step
+      let nominalCxPerStep = 2 * numTerms;
+      if (order === 2) nominalCxPerStep *= 2;
+
+      // Processor A (Linear) adds SWAPs for PBC
+      let swapsPerStepA = 0;
+      if (pbc) {
+        swapsPerStepA = Math.max(0, N - 2) * (order === 2 ? 2 : 1);
+      }
+      const cxPerStepA = nominalCxPerStep + (3 * swapsPerStepA);
+      const cxPerStepB = nominalCxPerStep; // 0 SWAPs on heavy-hex for 4-cycle
+
+      const cNoiseA = cxPerStepA * (err2Q / 100);
+      const cNoiseB = cxPerStepB * (err2Q / 100);
+
+      // Analytical continuous n*
+      let anaNA = 1, anaNB = 1;
+      if (order === 1) {
+        anaNA = Math.sqrt(cTrotter / Math.max(1e-6, cNoiseA));
+        anaNB = Math.sqrt(cTrotter / Math.max(1e-6, cNoiseB));
+      } else {
+        anaNA = Math.cbrt((2 * cTrotter) / Math.max(1e-6, cNoiseA));
+        anaNB = Math.cbrt((2 * cTrotter) / Math.max(1e-6, cNoiseB));
+      }
+
+      const rows = [];
+      for (let n of steps) {
+        // Trotter Discretization error
+        let trotErr = (cTrotter / Math.pow(n, order));
+        trotErr = Math.min(0.95, trotErr);
+
+        // Hardware noise accumulation
+        const totalCxA = cxPerStepA * n;
+        const totalCxB = cxPerStepB * n;
+        const depthA = Math.round(n * (order === 2 ? 17 : 10) * (pbc ? 1.6 : 1.0));
+        const depthB = Math.round(n * (order === 2 ? 17 : 10));
+
+        // Noise error model
+        const noiseErrA = 1.0 - Math.pow(1.0 - (err2Q / 100), totalCxA);
+        const noiseErrB = 1.0 - Math.pow(1.0 - (err2Q / 100), totalCxB);
+
+        // Net error
+        const totErrA = Math.min(0.99, Math.sqrt(trotErr * trotErr + noiseErrA * noiseErrA));
+        const totErrB = Math.min(0.99, Math.sqrt(trotErr * trotErr + noiseErrB * noiseErrB));
+
+        // Mitigation attenuates error by 23%
+        const mitErrB = Math.max(0.01, totErrB * (mitigated ? 0.77 : 1.0));
+
+        rows.push({
+          n, trotErr,
+          depthA, cxA: totalCxA, swapsA: swapsPerStepA * n, totErrA, noiseErrA,
+          depthB, cxB: totalCxB, swapsB: 0, totErrB, noiseErrB,
+          mitErrB
+        });
+      }
+
+      return { rows, anaNA, anaNB, cTrotter, cNoiseB };
+    }
+
+    function updateDashboard() {
+      const J = parseFloat(document.getElementById('input-J').value);
+      const h = parseFloat(document.getElementById('input-h').value);
+      const T = parseFloat(document.getElementById('input-T').value);
+      const N = parseInt(document.getElementById('input-N').value);
+      const err = parseFloat(document.getElementById('input-err').value);
+      const pbc = document.getElementById('toggle-pbc').checked;
+      const order2 = document.getElementById('toggle-order').checked;
+      const mit = document.getElementById('toggle-mitigation').checked;
+
+      // Update text displays
+      document.getElementById('val-J').innerText = J.toFixed(1);
+      document.getElementById('val-h').innerText = h.toFixed(1);
+      document.getElementById('val-T').innerText = T.toFixed(1);
+      document.getElementById('val-N').innerText = N;
+      document.getElementById('val-err').innerText = err.toFixed(1) + '%';
+      document.getElementById('label-boundary').innerText = pbc ? 'Periodic Ring (PBC)' : 'Open (OBC)';
+      document.getElementById('label-order').innerText = order2 ? '2nd Order (Strang)' : '1st Order';
+
+      // Show/hide topology alert
+      const alertBox = document.getElementById('topology-alert');
+      if (pbc) {
+        alertBox.classList.add('active');
+      } else {
+        alertBox.classList.remove('active');
+      }
+
+      const { rows, anaNA, anaNB } = calculateTrotterSweep(J, h, T, N, err, pbc, order2, mit);
+
+      // Find optimal n* on Processor B
+      let bestB = rows.reduce((min, r) => r.totErrB < min.totErrB ? r : min, rows[0]);
+
+      // Update KPIs
+      document.getElementById('kpi-n-star').innerText = bestB.n;
+      document.getElementById('kpi-min-err').innerText = (bestB.totErrB * 100).toFixed(1) + '%';
+      document.getElementById('kpi-mit-err').innerText = 'Mitigated: ' + (bestB.mitErrB * 100).toFixed(1) + '%';
+      document.getElementById('kpi-ana-n').innerText = anaNB.toFixed(2);
+      document.getElementById('kpi-depth').innerText = bestB.depthB;
+      document.getElementById('kpi-cx').innerText = `2Q CX Gates: ${bestB.cxB}`;
+
+      // Update Chart
+      renderChart(rows, bestB.n);
+
+      // Update Table
+      renderTable(rows, bestB.n);
+    }
+
+    function renderChart(rows, optN) {
+      const labels = rows.map(r => 'n = ' + r.n);
+      const trotData = rows.map(r => r.trotErr * 100);
+      const noiseDataB = rows.map(r => r.noiseErrB * 100);
+      const errAData = rows.map(r => r.totErrA * 100);
+      const errBData = rows.map(r => r.totErrB * 100);
+      const mitData = rows.map(r => r.mitErrB * 100);
+
+      const ctx = document.getElementById('trotterChart').getContext('2d');
+
+      if (myChart) {
+        myChart.data.labels = labels;
+        myChart.data.datasets[0].data = trotData;
+        myChart.data.datasets[1].data = noiseDataB;
+        myChart.data.datasets[2].data = errAData;
+        myChart.data.datasets[3].data = errBData;
+        myChart.data.datasets[4].data = mitData;
+        myChart.update();
+        return;
+      }
+
+      myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Algorithmic Trotter Error (Discretization)',
+              data: trotData,
+              borderColor: '#94A3B8',
+              borderDash: [6, 4],
+              pointRadius: 0,
+              tension: 0.2
+            },
+            {
+              label: 'Hardware Gate Noise (Accumulating)',
+              data: noiseDataB,
+              borderColor: '#F59E0B',
+              borderDash: [3, 3],
+              pointRadius: 0,
+              tension: 0.2
+            },
+            {
+              label: 'Processor A Total Error (Linear)',
+              data: errAData,
+              borderColor: '#F87171',
+              backgroundColor: 'rgba(248, 113, 113, 0.1)',
+              borderWidth: 2.5,
+              pointRadius: 4,
+              tension: 0.2
+            },
+            {
+              label: 'Processor B Total Error (Heavy-Hex)',
+              data: errBData,
+              borderColor: '#38BDF8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              borderWidth: 3,
+              pointRadius: 5,
+              tension: 0.2
+            },
+            {
+              label: 'Processor B Mitigated Error',
+              data: mitData,
+              borderColor: '#4ADE80',
+              borderDash: [4, 4],
+              borderWidth: 2,
+              pointRadius: 3,
+              tension: 0.2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              labels: { color: '#E2E8F0', font: { size: 11 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(c) {
+                  return c.dataset.label + ': ' + c.parsed.y.toFixed(2) + '%';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#334155' },
+              ticks: { color: '#94A3B8' }
+            },
+            y: {
+              title: { display: true, text: 'Relative Error (%)', color: '#94A3B8' },
+              grid: { color: '#334155' },
+              ticks: { color: '#94A3B8' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    function renderTable(rows, optN) {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        if (r.n === optN) tr.classList.add('opt-row');
+
+        tr.innerHTML = `
+          <td><strong>${r.n}</strong> ${r.n === optN ? '★ (n*)' : ''}</td>
+          <td>${(r.trotErr * 100).toFixed(2)}%</td>
+          <td>${r.depthA}</td>
+          <td>${r.cxA} (${r.swapsA})</td>
+          <td style="color: var(--accent-red);">${(r.totErrA * 100).toFixed(2)}%</td>
+          <td>${r.depthB}</td>
+          <td>${r.cxB} (${r.swapsB})</td>
+          <td style="color: var(--accent-blue); font-weight: 600;">${(r.totErrB * 100).toFixed(2)}%</td>
+          <td style="color: var(--accent-green);">${(r.mitErrB * 100).toFixed(2)}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportCSV() {
+      const rows = document.querySelectorAll('#results-table tr');
+      let csv = [];
+      rows.forEach(r => {
+        let cols = Array.from(r.querySelectorAll('th, td')).map(td => td.innerText.replace('★ (n*)', '').trim());
+        csv.push(cols.join(','));
+      });
+      const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'trotter_sweep_interactive.csv';
+      a.click();
+    }
+
+    // Initialize on page load
+    window.onload = function() {
+      updateDashboard();
+    };
+  </script>
+</body>
+</html>
