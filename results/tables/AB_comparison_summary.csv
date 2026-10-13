@@ -1,0 +1,12 @@
+Metric,Processor A,Processor B,Difference (B - A)
+Physical Qubits,5,7,2
+Circuit Depth (n=5),58,58,0
+Two-Qubit (CX) Gates (n=5),30,30,0
+Routing SWAP Gates (n=5),0,0,0
+Total Operations (n=5),145,145,0
+Ideal Trotter Energy (n=5),-2.9592,-2.9592,0.0000
+Measured Energy (n=5),-2.0874,-2.0874,0.0000
+Standard Error (sigma),0.0396,0.0396,0.0000
+Total Relative Error (n=5),0.3042,0.3042,0.0000
+Optimal Trotter Step (n*),3,3,0
+Minimum Achievable Error at n*,0.2396,0.2396,0.0000

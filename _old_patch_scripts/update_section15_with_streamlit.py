@@ -1,0 +1,122 @@
+"""
+Script to embed both Streamlit (IFrame) and native @widgets.interact
+into Section 15 of main.ipynb.
+"""
+
+import json
+from pathlib import Path
+
+nb_path = Path('main.ipynb')
+nb = json.load(open(nb_path, 'r', encoding='utf-8'))
+
+cell_source = [
+    "# 15. Interactive Exploration Dashboard & Live Simulator in Notebook\n",
+    "import sys\n",
+    "import socket\n",
+    "import subprocess\n",
+    "import time\n",
+    "from pathlib import Path\n",
+    "from IPython.display import display, IFrame, HTML\n",
+    "import ipywidgets as widgets\n",
+    "import matplotlib.pyplot as plt\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "\n",
+    "from src.problem import create_ising_chain\n",
+    "from src.processors import load_processor\n",
+    "from src.routing import transpile_circuit, analyze_routing_overhead\n",
+    "from src.metrics import find_optimal_trotter_step, predict_analytical_optimal_n\n",
+    "\n",
+    "# ==============================================================================\n",
+    "# 1. Live Embedded Streamlit Simulator (Port 8501)\n",
+    "# Embeds interactive_app.py directly inside the Jupyter Notebook cell!\n",
+    "# ==============================================================================\n",
+    "def is_streamlit_running(port=8501):\n",
+    "    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:\n",
+    "        s.settimeout(0.5)\n",
+    "        return s.connect_ex(('127.0.0.1', port)) == 0\n",
+    "\n",
+    "if not is_streamlit_running(8501):\n",
+    "    print('Starting Streamlit interactive backend on port 8501...')\n",
+    "    subprocess.Popen(\n",
+    "        [sys.executable, '-m', 'streamlit', 'run', 'interactive_app.py', '--server.headless', 'true', '--server.port', '8501'],\n",
+    "        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL\n",
+    "    )\n",
+    "    for _ in range(8):\n",
+    "        time.sleep(1)\n",
+    "        if is_streamlit_running(8501):\n",
+    "            break\n",
+    "\n",
+    "display(HTML('''\n",
+    "<div style=\"background: #0F172A; padding: 14px 18px; border-radius: 8px; border-left: 4px solid #38BDF8; margin-bottom: 12px; color: #E2E8F0; font-family: sans-serif;\">\n",
+    "    <h4 style=\"margin: 0 0 6px 0; color: #38BDF8; font-size: 16px;\">⚛️ Live Interactive Streamlit Dashboard (Embedded in Notebook)</h4>\n",
+    "    <span style=\"font-size: 13px;\">Adjust parameters in the interactive simulator below. You can also open full-screen in your browser: \n",
+    "    <a href=\"http://localhost:8501\" target=\"_blank\" style=\"color: #38BDF8; font-weight: bold; text-decoration: underline;\">http://localhost:8501</a></span>\n",
+    "</div>\n",
+    "'''))\n",
+    "\n",
+    "display(IFrame(src='http://localhost:8501', width='100%', height=800))\n",
+    "\n",
+    "# ==============================================================================\n",
+    "# 2. In-Notebook Interactive Widget Simulator (@widgets.interact)\n",
+    "# Sliders and live U-curve plot directly in the notebook output\n",
+    "# ==============================================================================\n",
+    "display(HTML('<h4 style=\"margin-top: 24px; color: #818CF8;\">🎛️ Native Python Widgets Simulator</h4>'))\n",
+    "\n",
+    "@widgets.interact(\n",
+    "    qubits=widgets.IntSlider(min=3, max=5, step=1, value=4, description='Spins (N):', continuous_update=False),\n",
+    "    J=widgets.FloatSlider(min=0.1, max=2.5, step=0.1, value=1.0, description='Coupling J:', continuous_update=False),\n",
+    "    h=widgets.FloatSlider(min=0.1, max=2.5, step=0.1, value=0.5, description='Field h:', continuous_update=False),\n",
+    "    time=widgets.FloatSlider(min=0.2, max=3.0, step=0.1, value=1.0, description='Time T (s):', continuous_update=False),\n",
+    "    order=widgets.Dropdown(options=[('1st Order Lie-Trotter', 1), ('2nd Order Strang', 2)], value=1, description='Order:'),\n",
+    "    pbc=widgets.Checkbox(value=False, description='Periodic Boundary (PBC)'),\n",
+    "    noise_2q=widgets.FloatSlider(min=0.1, max=4.0, step=0.1, value=1.0, description='2Q Error (%):', continuous_update=False)\n",
+    ")\n",
+    "def interactive_notebook_simulation(qubits, J, h, time, order, pbc, noise_2q):\n",
+    "    sim = create_ising_chain(num_qubits=qubits, J=J, h=h, periodic=pbc)\n",
+    "    exact_E = sim.exact_energy_expectation(sim.exact_evolved_state(None, time))\n",
+    "    ana = predict_analytical_optimal_n(J, h, time, qubits, noise_2q/100, order=order, periodic=pbc)\n",
+    "\n",
+    "    steps = [1, 2, 3, 4, 5, 6, 8, 10]\n",
+    "    trot_errs, noise_errs, tot_errs = [], [], []\n",
+    "    for n in steps:\n",
+    "        sv = sim.ideal_statevector(time, n, order=order)\n",
+    "        e = sim.exact_energy_expectation(sv)\n",
+    "        t_err = abs(e - exact_E) / max(1e-9, abs(exact_E))\n",
+    "        cx_count = (2 * (qubits if pbc else (qubits - 1))) * (2 if order == 2 else 1) * n\n",
+    "        n_err = 1.0 - (1.0 - (noise_2q/100))**cx_count\n",
+    "        tot = np.sqrt(t_err**2 + n_err**2)\n",
+    "        trot_errs.append(t_err)\n",
+    "        noise_errs.append(n_err)\n",
+    "        tot_errs.append(tot)\n",
+    "\n",
+    "    best_idx = int(np.argmin(tot_errs))\n",
+    "    opt_n = steps[best_idx]\n",
+    "\n",
+    "    print(f'=== SIMULATION RESULTS (N={qubits}, J={J}, h={h}, T={time}s, Order={order}, Periodic={pbc}) ===')\n",
+    "    print(f'Exact Ground Truth Energy: E_exact = {exact_E:.6f}')\n",
+    "    print(f'Optimal Trotter Sweet Spot: n* = {opt_n} (Min Total Error: {tot_errs[best_idx]*100:.2f}%)')\n",
+    "    print(f'Analytical Prediction:      n* ~ {ana[\"analytical_n_continuous\"]:.2f} (rounded: {ana[\"analytical_n_optimal\"]})')\n",
+    "\n",
+    "    fig, ax = plt.subplots(figsize=(9, 4.2), dpi=120)\n",
+    "    ax.plot(steps, trot_errs, '--', color='#90A4AE', linewidth=2, label='Trotter Discretization Error')\n",
+    "    ax.plot(steps, noise_errs, ':', color='#FFA000', linewidth=2, label='Hardware Gate Noise')\n",
+    "    ax.plot(steps, tot_errs, 's-', color='#1976D2', linewidth=2.5, label=f'Total Error (Sweet Spot n* = {opt_n})')\n",
+    "    ax.axvline(x=opt_n, color='#1976D2', linestyle=':', label=f'Optimal Sweet Spot n* = {opt_n}')\n",
+    "    ax.set_xlabel('Trotter Steps (n)', fontweight='bold')\n",
+    "    ax.set_ylabel('Relative Error', fontweight='bold')\n",
+    "    ax.set_title(f'Trotter Tradeoff U-Curve (N={qubits}, J={J}, h={h}, T={time}s)', fontweight='bold')\n",
+    "    ax.legend()\n",
+    "    ax.grid(True, linestyle=':', alpha=0.6)\n",
+    "    plt.tight_layout()\n",
+    "    plt.show()\n"
+]
+
+nb['cells'][27]['source'] = cell_source
+nb['cells'][27]['outputs'] = []
+nb['cells'][27]['execution_count'] = None
+
+with open(nb_path, 'w', encoding='utf-8') as f:
+    json.dump(nb, f, indent=1)
+
+print('Successfully updated Section 15 of main.ipynb with embedded Streamlit + native widgets!')

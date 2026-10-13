@@ -1,0 +1,64 @@
+{
+    "name": "processor_A",
+    "description": "5-qubit linear processor with synthetic noise model",
+    "num_qubits": 5,
+    "coupling_map": [
+        [
+            0,
+            1
+        ],
+        [
+            1,
+            0
+        ],
+        [
+            1,
+            2
+        ],
+        [
+            2,
+            1
+        ],
+        [
+            2,
+            3
+        ],
+        [
+            3,
+            2
+        ],
+        [
+            3,
+            4
+        ],
+        [
+            4,
+            3
+        ]
+    ],
+    "basis_gates": [
+        "rz",
+        "sx",
+        "x",
+        "cx"
+    ],
+    "ports": [
+        0,
+        4
+    ],
+    "topology": "linear",
+    "noise": {
+        "type": "synthetic",
+        "model": "depolarizing",
+        "single_qubit_error": 0.001,
+        "two_qubit_error": 0.01,
+        "readout_error": 0.02,
+        "description": "Synthetic noise model for baseline comparison"
+    },
+    "metadata": {
+        "phase": 1,
+        "processor_type": "baseline",
+        "graph_type": "fixed_linear",
+        "created_for": "QFF_2026_Phase_1"
+    }
+}
