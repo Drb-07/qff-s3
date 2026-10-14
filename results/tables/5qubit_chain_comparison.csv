@@ -1,0 +1,4 @@
+Architecture,Transpiled_Depth,2Q_Gates,SWAP_Gates,Extra_Routing_CX,Measured_Energy,Mitigated_Energy,Raw_Total_Error,Mitigated_Total_Error,Noisy_State_Fidelity
+Processor A (5Q T-Tree),64,33,3,9,-2.8514 +/- 0.0447,-3.0589 +/- 0.0475,28.72% +/- 1.12%,23.53% +/- 1.19%,57.10%
+Processor B (7Q Heavy-Hex Tree),39,24,0,0,-3.0521 +/- 0.0533,-3.2737 +/- 0.0555,23.70% +/- 1.33%,18.16% +/- 1.39%,74.46%
+Advantage (B vs A),-25 (-39.1%),-9 (-27.3%),-3,-9,-0.2008,-0.2148,-5.02%,-5.37%,+17.37%
