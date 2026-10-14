@@ -1,6 +1,6 @@
 """
-Processors Module
-Load and configure Processor A and Processor B definitions
+Processors Module - Qiskit Fall Fest 2026 Phase 1
+Load and configure Processor A (5Q T-shaped tree) and Processor B (7Q Heavy-Hex tree)
 """
 
 import json
@@ -8,85 +8,67 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 
-def load_processor(path: str) -> Dict[str, Any]:
-    """
-    Load processor configuration from JSON file.
-
-    Args:
-        path: Path to processor JSON file
-
-    Returns:
-        Dictionary with processor configuration
-    """
+def load_processor(path: Any) -> Dict[str, Any]:
+    """Load processor configuration from JSON file."""
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
 def get_processor_graph(processor: Dict[str, Any]) -> nx.Graph:
-    """
-    Create a NetworkX graph from processor coupling map.
-
-    Args:
-        processor: Processor configuration dictionary
-
-    Returns:
-        NetworkX Graph representing the processor topology
-    """
+    """Create a NetworkX graph from processor coupling map."""
     G = nx.Graph()
     G.add_nodes_from(range(processor['num_qubits']))
-
-    # Add edges from coupling map (as undirected graph for visualization)
     edges = set()
     for edge in processor['coupling_map']:
         edges.add(tuple(sorted(edge)))
     G.add_edges_from(edges)
-
     return G
 
 
 def visualize_processor(processor: Dict[str, Any], save_path: Optional[str] = None):
     """
-    Visualize processor topology.
-
-    Args:
-        processor: Processor configuration dictionary
-        save_path: Optional path to save the figure
+    Visualize processor topology using its defined coordinate layout.
     """
     G = get_processor_graph(processor)
+    fig, ax = plt.subplots(figsize=(7, 5.5), dpi=130)
 
-    plt.figure(figsize=(8, 6))
+    port_nodes = set(processor.get('ports', []))
+    node_colors = ['#2E7D32' if n in port_nodes else '#1976D2' for n in G.nodes()]
 
-    # Color ports differently
-    port_nodes = processor.get('ports', [])
-    node_colors = ['#4CAF50' if n in port_nodes else '#2196F3' for n in G.nodes()]
+    # Use geometric layout if defined in JSON, else spring_layout
+    layout_data = processor.get('layout')
+    if layout_data:
+        pos = {int(k): tuple(v) for k, v in layout_data.items()}
+    else:
+        pos = nx.spring_layout(G, seed=42)
 
-    # Use spring layout for better visualization
-    pos = nx.spring_layout(G, seed=42)
+    nx.draw_networkx_edges(G, pos, ax=ax, width=2.5, edge_color='#64748B')
+    nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, node_size=900,
+                           edgecolors='#0F172A', linewidths=1.8)
+    nx.draw_networkx_labels(G, pos, ax=ax, font_size=13, font_color='white',
+                            font_weight='bold')
 
-    nx.draw(G, pos, with_labels=True, node_color=node_colors,
-            node_size=800, font_size=12, font_weight='bold',
-            edge_color='gray', width=2)
+    ax.set_title(f"{processor['name']} — {processor.get('topology', '').replace('_', ' ').title()}\n"
+                 f"({processor['num_qubits']} Physical Qubits | Designated Ports: {processor.get('ports')})",
+                 fontsize=12, fontweight='bold', pad=12)
+    ax.axis('off')
 
-    plt.title(f"{processor['name']} - {processor['topology']} topology\n"
-              f"({processor['num_qubits']} qubits)", fontsize=14)
-
-    # Add legend
-    from matplotlib.patches import Patch
     legend_elements = [
-        Patch(facecolor='#4CAF50', label='Port qubits'),
-        Patch(facecolor='#2196F3', label='Non-port qubits')
+        Patch(facecolor='#2E7D32', edgecolor='#0F172A', label='Designated Communication Port'),
+        Patch(facecolor='#1976D2', edgecolor='#0F172A', label='Internal Processor Qubit')
     ]
-    plt.legend(handles=legend_elements, loc='upper right')
-
+    ax.legend(handles=legend_elements, loc='lower right', framealpha=0.9, fontsize=9)
     plt.tight_layout()
 
     if save_path:
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"Saved processor graph to: {save_path}")
 
-    plt.show()
+    return fig
 
 
 def print_processor_info(processor: Dict[str, Any]):
@@ -108,14 +90,3 @@ def print_processor_info(processor: Dict[str, Any]):
         print(f"    Single-qubit error: {noise.get('single_qubit_error', 'N/A')}")
         print(f"    Two-qubit error: {noise.get('two_qubit_error', 'N/A')}")
         print(f"    Readout error: {noise.get('readout_error', 'N/A')}")
-
-
-# Example usage
-if __name__ == "__main__":
-    # Load processors using absolute path relative to this file
-    base_dir = Path(__file__).parent.parent
-    processor_A = load_processor(base_dir / "processors" / "processor_A.json")
-    processor_B = load_processor(base_dir / "processors" / "processor_B.json")
-
-    print_processor_info(processor_A)
-    print_processor_info(processor_B)

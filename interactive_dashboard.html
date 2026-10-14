@@ -469,7 +469,7 @@
         </div>
 
         <div class="topology-alert" id="topology-alert">
-          <strong>⚠️ Periodic Boundary (PBC) Topology Alert:</strong> Linear graph (Processor A) requires 2 SWAP chains (+6 CX per step) to connect the boundary qubit. Heavy-hex (Processor B) natively contains a 4-cycle and routes with <strong>0 SWAPs</strong>, reducing error by <strong>35.5%</strong>!
+          <strong>⚠️ Periodic Boundary (PBC) Topology Alert:</strong> Closing the boundary ring on tree topologies incurs routing SWAPs. Processor A routes through its central hub, while Processor B routes across heavy-hex tree branches.
         </div>
       </div>
 
@@ -695,7 +695,7 @@
               tension: 0.2
             },
             {
-              label: 'Processor A Total Error (Linear)',
+              label: 'Processor A Total Error (T-Shape)',
               data: errAData,
               borderColor: '#F87171',
               backgroundColor: 'rgba(248, 113, 113, 0.1)',

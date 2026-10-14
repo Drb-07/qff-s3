@@ -1,16 +1,14 @@
 """
-Metrics Module
-Qiskit Fall Fest 2026 - Phase 1 Hackathon
-
-Calculates and tracks problem-specific metrics (energy error, algorithmic Trotter error,
-fidelity, total variation distance) and architecture metrics (depth, 2Q gates, SWAPs, ops),
-including analytical uncertainty quantification (sigma_p) and error mitigation.
+Metrics Module - Qiskit Fall Fest 2026 Phase 1
+Calculates problem-specific metrics (energy error, algorithmic Trotter error,
+noisy state fidelity, total variation distance) and architecture metrics (depth, 2Q gates, exact SWAPs),
+including analytical uncertainty quantification (sigma_p) and readout error mitigation.
 """
 
 import math
 from typing import Dict, Any, List, Tuple, Optional
-from qiskit import QuantumCircuit
 import numpy as np
+from qiskit import QuantumCircuit
 
 
 def circuit_metrics(qc: QuantumCircuit) -> Dict[str, Any]:
@@ -66,7 +64,6 @@ def mitigate_readout_counts(raw_counts: Dict[str, int],
         raw_vec[idx] = count / total_shots
 
     # 1-qubit inverse response matrix
-    # M = [[1-e, e], [e, 1-e]]
     det = (1.0 - readout_error)**2 - readout_error**2
     if det == 0:
         return {k: v / total_shots for k, v in raw_counts.items()}
@@ -79,7 +76,6 @@ def mitigate_readout_counts(raw_counts: Dict[str, int],
         M_inv = np.kron(M_inv, M_inv_1q)
 
     mitigated_vec = M_inv @ raw_vec
-    # Clip negative probabilities and re-normalize
     mitigated_vec = np.clip(mitigated_vec, 0.0, None)
     if np.sum(mitigated_vec) > 0:
         mitigated_vec /= np.sum(mitigated_vec)
@@ -93,10 +89,64 @@ def mitigate_readout_counts(raw_counts: Dict[str, int],
     return mitigated_counts
 
 
+def compute_noisy_state_fidelity(qc: QuantumCircuit,
+                                 ideal_state: np.ndarray,
+                                 noise_model: Any,
+                                 num_qubits: int) -> float:
+    """
+    Compute noisy quantum state fidelity F_noisy = <psi_exact | rho_noisy | psi_exact>
+    using Qiskit Aer density matrix simulation, properly accounting for transpiler layout
+    and active vs ancilla qubit mapping.
+    """
+    from qiskit_aer import AerSimulator
+    from qiskit.quantum_info import state_fidelity, partial_trace, Statevector, DensityMatrix
+
+    sim = AerSimulator(noise_model=noise_model, method='density_matrix')
+    qc_dm = qc.copy()
+    qc_dm.remove_final_measurements(inplace=True)
+    qc_dm.save_density_matrix()
+
+    try:
+        res = sim.run(qc_dm).result()
+        rho = res.data(0)['density_matrix']
+        total_qubits = qc_dm.num_qubits
+
+        # Extract active physical qubit indices from transpiler layout
+        tl = getattr(qc, 'layout', None)
+        if tl and tl.final_index_layout() is not None:
+            final_layout = tl.final_index_layout()
+        elif tl and tl.initial_index_layout() is not None:
+            final_layout = tl.initial_index_layout()[:num_qubits]
+        else:
+            final_layout = list(range(num_qubits))
+
+        phys_indices = final_layout[:num_qubits]
+        ancillas = [p for p in range(total_qubits) if p not in phys_indices]
+
+        if ancillas:
+            rho_reduced = partial_trace(rho, ancillas)
+        else:
+            rho_reduced = rho
+
+        # Re-order subsystems to match original virtual qubit ordering (q_0, ..., q_{k-1})
+        remaining_phys = sorted(phys_indices)
+        k = num_qubits
+        pos_in_reduced = [remaining_phys.index(phys_indices[v]) for v in range(k)]
+
+        ket_axes = [k - 1 - pos_in_reduced[v] for v in range(k)]
+        bra_axes = [k - 1 - pos_in_reduced[v] + k for v in range(k)]
+
+        arr = np.array(rho_reduced.data).reshape([2] * (2 * k))
+        arr_perm = np.transpose(arr, ket_axes + bra_axes).reshape((2**k, 2**k))
+        rho_final = DensityMatrix(arr_perm)
+
+        return float(state_fidelity(Statevector(ideal_state), rho_final))
+    except Exception:
+        return 0.0
+
+
 def find_optimal_trotter_step(sweep_records: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Find optimal Trotter step n* where total error (or energy error) is minimized.
-    """
+    """Find optimal Trotter step n* where total energy error is minimized."""
     if not sweep_records:
         return {}
 
@@ -106,6 +156,7 @@ def find_optimal_trotter_step(sweep_records: List[Dict[str, Any]]) -> Dict[str, 
         'min_total_error': best_record.get('total_error'),
         'optimal_depth': best_record.get('depth'),
         'optimal_2q_gates': best_record.get('two_qubit_ops'),
+        'optimal_swaps': best_record.get('swap_count', 0),
         'trotter_error_at_opt': best_record.get('trotter_error'),
         'noise_error_at_opt': best_record.get('noise_error')
     }
@@ -120,53 +171,34 @@ def predict_analytical_optimal_n(J: float = 1.0,
                                  periodic: bool = False,
                                  processor_type: str = 'processor_A') -> Dict[str, Any]:
     """
-    Predict optimal Trotter step n* analytically from Hamiltonian commutator bounds and hardware noise.
+    Continuous analytical estimate of n* from commutator norms and 2Q gate noise scaling:
+    eps_total(n) ~ C_trotter / n^order + C_noise * n.
 
-    Mathematical Model:
-    Total Error: eps_total(n) = C_trotter / (n^order) + C_noise * n
-    First-order:
-      d(eps)/dn = - C_trotter / n^2 + C_noise = 0  =>  n* = sqrt(C_trotter / C_noise)
-    Second-order:
-      d(eps)/dn = - 2 * C_trotter / n^3 + C_noise = 0  =>  n* = (2 * C_trotter / C_noise)^(1/3)
+    Note: Continuous analytical estimates capture qualitative scaling, but differ from
+    empirical discrete minima at extreme noise limits (e.g. <=0.2% or >=4.0%) due to
+    integer step quantization and non-linear multi-qubit error accumulation.
     """
     num_terms = num_qubits if periodic else (num_qubits - 1)
-    
-    # 2Q gates per Trotter step (each ZZ interaction = 2 CX)
     nominal_2q_per_step = 2 * num_terms
     if order == 2:
-        nominal_2q_per_step *= 2  # Strang splitting applies ZZ twice
+        nominal_2q_per_step *= 2
 
-    # Add routing SWAP overhead if linear topology and periodic
     swaps_per_step = 0
     if periodic and processor_type == 'processor_A':
-        # On linear graph of N qubits, coupling (N-1) to 0 requires (N-2) SWAPs
-        swaps_per_step = max(0, num_qubits - 2) * (2 if order == 2 else 1)
-        
-    cx_per_step = nominal_2q_per_step + (3 * swaps_per_step)
+        swaps_per_step = 2 * (2 if order == 2 else 1)
 
-    # Noise coefficient C_noise: error accumulation per step
+    cx_per_step = nominal_2q_per_step + (3 * swaps_per_step)
     c_noise = cx_per_step * two_q_error
 
-    # Algorithmic Trotter error coefficient C_trotter
-    # Commutator norm: ||[H_ZZ, H_X]|| ~ 2 * J * h * num_terms
-    # Normalized by ground-state energy scale ~ J * num_terms + h * num_qubits
     energy_scale = max(1.0, J * num_terms + h * num_qubits)
     commutator_norm = 2.0 * abs(J) * abs(h) * num_terms
 
     if order == 1:
-        # First-order Trotter bound: eps_trot ~ (1 / (2 * energy_scale)) * ||[H_ZZ, H_X]|| * (time^2) / n
         c_trotter = (0.5 * commutator_norm * (time ** 2)) / energy_scale
-        if c_noise > 0:
-            n_continuous = math.sqrt(c_trotter / c_noise)
-        else:
-            n_continuous = 10.0
+        n_continuous = math.sqrt(c_trotter / c_noise) if c_noise > 0 else 10.0
     else:
-        # Second-order Trotter bound: eps_trot ~ C * (time^3) / (n^2)
         c_trotter = (0.0833 * commutator_norm * (abs(J) + abs(h)) * (time ** 3)) / energy_scale
-        if c_noise > 0:
-            n_continuous = (2.0 * c_trotter / c_noise) ** (1.0 / 3.0)
-        else:
-            n_continuous = 10.0
+        n_continuous = ((2.0 * c_trotter / c_noise) ** (1.0 / 3.0)) if c_noise > 0 else 10.0
 
     n_optimal = max(1, int(round(n_continuous)))
     predicted_min_error = (c_trotter / (n_optimal ** order)) + (c_noise * n_optimal)
@@ -179,4 +211,3 @@ def predict_analytical_optimal_n(J: float = 1.0,
         'c_noise': float(c_noise),
         'cx_per_step': int(cx_per_step)
     }
-

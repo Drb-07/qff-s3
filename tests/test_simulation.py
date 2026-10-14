@@ -82,16 +82,13 @@ class TestProcessorsAndRouting(unittest.TestCase):
     def setUp(self):
         self.proc_A = load_processor(BASE_DIR / 'processors' / 'processor_A.json')
         self.proc_B = load_processor(BASE_DIR / 'processors' / 'processor_B.json')
-        self.proc_C = load_processor(BASE_DIR / 'processors' / 'processor_C.json')
 
     def test_processor_configurations(self):
         """Verify processor configurations match challenge specification."""
         self.assertEqual(self.proc_A['num_qubits'], 5)
         self.assertEqual(self.proc_B['num_qubits'], 7)
-        self.assertEqual(self.proc_C['num_qubits'], 10)
         self.assertEqual(self.proc_A['ports'], [0, 4])
         self.assertEqual(self.proc_B['ports'], [0, 6])
-        self.assertEqual(self.proc_C['ports'], [0, 9])
 
     def test_transpilation_basis_gates(self):
         """Verify transpiled circuit adheres strictly to basis gates."""
@@ -103,18 +100,30 @@ class TestProcessorsAndRouting(unittest.TestCase):
         for op in trans_A.count_ops().keys():
             self.assertIn(op, allowed_gates)
 
-    def test_pbc_routing_overhead_differentiation(self):
-        """Verify Processor A incurs SWAPs on PBC while Processor B embeds with 0 SWAPs."""
-        sim_pbc = create_ising_chain(num_qubits=4, J=1.0, h=0.5, periodic=True)
-        qc = sim_pbc.build_trotter_circuit(time=1.0, num_steps=1, order=1, basis=None)
-        tA = transpile_circuit(qc, self.proc_A, optimization_level=1, seed_transpiler=42)
-        tB = transpile_circuit(qc, self.proc_B, optimization_level=1, seed_transpiler=42)
-        rA = analyze_routing_overhead(qc, tA)
-        rB = analyze_routing_overhead(qc, tB)
+    def test_5qubit_chain_architectural_divergence(self):
+        """Verify Processor A incurs SWAPs on 5Q chain while Processor B embeds with 0 SWAPs."""
+        from routing import transpile_with_routing_analysis
+        sim_5q = create_ising_chain(num_qubits=5, J=1.0, h=0.5, periodic=False)
+        qc = sim_5q.build_trotter_circuit(time=1.0, num_steps=3, order=1, basis=None)
+        _, rA = transpile_with_routing_analysis(qc, self.proc_A, optimization_level=1, seed_transpiler=42)
+        _, rB = transpile_with_routing_analysis(qc, self.proc_B, optimization_level=1, seed_transpiler=42)
 
-        self.assertGreater(rA['effective_swaps'], 0)
-        self.assertEqual(rB['effective_swaps'], 0)
+        self.assertGreater(rA['exact_swaps'], 0)
+        self.assertEqual(rB['exact_swaps'], 0)
         self.assertGreater(rA['transpiled_2q_gates'], rB['transpiled_2q_gates'])
+
+    def test_cyclic_heavy_hex_variant_zero_swaps_on_ring(self):
+        """Verify cyclic heavy-hex variant embeds a 5-spin periodic ring with 0 SWAPs."""
+        import copy
+        from routing import transpile_with_routing_analysis
+        proc_cyc = copy.deepcopy(self.proc_B)
+        proc_cyc['coupling_map'].extend([[2, 6], [6, 2]])
+        sim_pbc5 = create_ising_chain(num_qubits=5, J=1.0, h=0.5, periodic=True)
+        qc = sim_pbc5.build_trotter_circuit(time=1.0, num_steps=3, order=1, basis=None)
+        _, rA = transpile_with_routing_analysis(qc, self.proc_A, optimization_level=1, seed_transpiler=42)
+        _, rCyc = transpile_with_routing_analysis(qc, proc_cyc, optimization_level=1, seed_transpiler=42)
+        self.assertEqual(rCyc['exact_swaps'], 0)
+        self.assertGreater(rA['exact_swaps'], 0)
 
 
 class TestMetricsAndAnalyticalTheory(unittest.TestCase):

@@ -1,29 +1,25 @@
-# QFF 2026 Phase 1 - S3 Noise in Trotter Simulation
-# Python Dependencies
+# Qiskit Fall Fest 2026 - Phase 1 Hackathon: S3 Trotter Simulation
+# Pinned Reproducible Environment Dependencies
 
 # Core quantum computing
-qiskit>=1.0.0
-qiskit-aer>=0.14.0
-qiskit-ibm-runtime>=0.22.0
+qiskit==2.4.1
+qiskit-aer==0.17.2
 
-# Numerical computing
-numpy>=1.24.0
-scipy>=1.11.0
+# Numerical & scientific computing
+numpy==2.4.2
+scipy==1.17.1
 
-# Data handling
-pandas>=2.0.0
+# Data handling & analysis
+pandas==2.3.3
 
-# Visualization
-matplotlib>=3.7.0
-networkx>=3.1
+# Visualization & network analysis
+matplotlib==3.10.9
+networkx==3.7
 
-# Jupyter
-jupyter>=1.0.0
-ipywidgets>=8.0.0
-ipykernel>=6.25.0
+# Interactive execution & UI
+ipywidgets==8.1.9
+streamlit==1.64.0
 
-# Optional: Progress bars
-tqdm>=4.66.0
-
-# Interactive dashboard (NEW)
-streamlit>=1.28.0
+# Testing & circuit rendering
+pytest==9.1.1
+pylatexenc==2.11

@@ -166,13 +166,13 @@ def main():
     plt.close(fig)
 
     if p["periodic"]:
-        st.info("⚠️ **Periodic boundary active:** Processor A (linear) needs routing SWAPs to close the ring; "
-                "Processor B (heavy-hex) can embed a 4-cycle natively.")
+        st.info("⚠️ **Periodic boundary active:** Closing the boundary ring on tree topologies requires routing SWAP gates. "
+                "Processor A routes through its central hub, while Processor B routes across heavy-hex tree branches.")
 
     st.markdown("### 📋 Parametric Sweep Results")
-    st.markdown("**Processor A (linear)**")
+    st.markdown("**Processor A (5Q T-Shape)**")
     st.dataframe(df_A, use_container_width=True, hide_index=True)
-    st.markdown("**Processor B (heavy-hex)**")
+    st.markdown("**Processor B (7Q Heavy-Hex)**")
     st.dataframe(df_B, use_container_width=True, hide_index=True)
 
     col_csv, col_json = st.columns(2)
