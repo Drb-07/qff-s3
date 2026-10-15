@@ -1,0 +1,17 @@
+Section,Metric,Processor_A,Processor_B
+Problem,Code,S3,S3
+Problem,Name,Noise in Trotter Simulation,Noise in Trotter Simulation
+Parameters,Qubits (N),4,4
+Parameters,J,1.0,1.0
+Parameters,h,0.5,0.5
+Parameters,Evolution Time T,1.0,1.0
+Optimal Trotter Step,Optimal n*,3,3
+Optimal Trotter Step,Min Total Error,23.96%,23.96%
+Optimal Trotter Step,Optimal Depth,36,36
+Optimal Trotter Step,Optimal 2Q Gates,18,18
+Fixed Step (n=5),Circuit Depth,58,58
+Fixed Step (n=5),2Q CX Gates,30,30
+Fixed Step (n=5),Routing SWAPs,0,0
+Fixed Step (n=5),Raw Measured Energy,-2.0874,-2.0874
+Fixed Step (n=5),Raw Total Error,30.42%,30.42%
+Fixed Step (n=5),Mitigated Total Error,25.34%,25.44%

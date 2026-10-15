@@ -1,0 +1,25 @@
+# Qiskit Fall Fest 2026 - Phase 1 Hackathon: S3 Trotter Simulation
+# Pinned Reproducible Environment Dependencies
+
+# Core quantum computing
+qiskit==2.4.1
+qiskit-aer==0.17.2
+
+# Numerical & scientific computing
+numpy==2.4.2
+scipy==1.17.1
+
+# Data handling & analysis
+pandas==2.3.3
+
+# Visualization & network analysis
+matplotlib==3.10.9
+networkx==3.7
+
+# Interactive execution & UI
+ipywidgets==8.1.9
+streamlit==1.64.0
+
+# Testing & circuit rendering
+pytest==9.1.1
+pylatexenc==2.11

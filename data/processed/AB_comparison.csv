@@ -1,0 +1,13 @@
+Metric,Processor A,Processor B,Difference (B - A)
+Physical Qubits,5,7,2
+Processor Topology,t_shaped_tree,heavy_hex_tree,Heavy-Hex vs T-Shape
+Circuit Depth (n=5),58,58,0
+Two-Qubit (CX) Gates (n=5),30,30,0
+Routing SWAP Gates (n=5),0,0,0
+"Measured Energy (Raw, 5 seeds)",-2.1127 +/- 0.0360,-2.1127 +/- 0.0360,0.0000
+"Measured Energy (Mitigated, 5 seeds)",-2.2644 +/- 0.0386,-2.2644 +/- 0.0386,0.0000
+"Total Error (Raw, n=5)",29.58%,29.58%,0.00%
+"Total Error (Mitigated, n=5)",24.52%,24.52%,0.00%
+Noisy State Fidelity (n=5),74.31%,74.31%,0.00%
+Optimal Trotter Step (n*),3,3,0
+Minimum Achievable Error at n*,23.79%,23.95%,0.16%
