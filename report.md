@@ -295,16 +295,24 @@ Both circuits verify that all multi-qubit operations strictly map to native phys
   - `results/figures/noise_sensitivity.png` ($n^*$ vs physical gate error rate)
   - `results/figures/error_budget_breakdown.png` (Stacked error decomposition)
 - **Data Tables & CSVs:**
-  - `results/tables/trotter_sweep_processor_A.csv`
-  - `results/tables/trotter_sweep_processor_B.csv`
-  - `results/tables/AB_comparison_summary.csv`
-  - `results/tables/5qubit_chain_comparison.csv`
-  - `results/tables/cyclic_variant_comparison.csv`
-  - `results/tables/pbc_comparison.csv`
-  - `results/tables/trotter_order_comparison.csv`
-  - `results/tables/noise_sensitivity.csv`
-  - `results/tables/error_budget.csv`
+  - `results/tables/trotter_sweep_processor_A.csv` (and Starter Guide alias `processor_A_metrics.csv`)
+  - `results/tables/trotter_sweep_processor_B.csv` (and Starter Guide alias `processor_B_metrics.csv`)
+  - `results/tables/AB_comparison_summary.csv` (and Starter Guide alias `AB_comparison.csv`)
+  - `results/tables/optimal_trotter_steps.csv` (Optimal step count and error metrics)
+  - `results/tables/final_comparison.json` (Structured JSON benchmark output)
+  - `results/tables/final_comparison.csv` (Tabular parameters and comparative metrics)
+  - `results/tables/5qubit_chain_comparison.csv` (5Q physical chain simulation metrics across 5 seeds)
+  - `results/tables/cyclic_variant_comparison.csv` (Cyclic vs acyclic heavy-hex benchmark)
+  - `results/tables/pbc_comparison.csv` (Periodic boundary condition comparison data)
+  - `results/tables/trotter_order_comparison.csv` (1st vs 2nd-order Trotter comparison data)
+  - `results/tables/noise_sensitivity.csv` (Noise sweep empirical vs analytical n* data)
+  - `results/tables/error_budget.csv` (Stacked error breakdown across steps)
+- **Data Directory per Starter Guide Layout:**
+  - `data/raw/full_raw_counts.json` (Full raw measurement count records across all 10 steps, 5 seeds, and Pauli Z/X bases)
+  - `data/raw/raw_counts_sample.json` (Representative sample extract for n=3 step count quick inspection)
+  - `data/processed/` (Processed metrics and side-by-side comparison CSVs)
 - **Interactive Artifacts & Tools:**
   - `interactive_dashboard.html` (Standalone single-file web dashboard)
   - `interactive_app.py` (Real-time Streamlit Qiskit Aer dashboard)
   - `tools/explore.py` (Optional CLI explorer with presets)
+  - `tools/setup_aliases.py` (Starter Guide directory and alias setup utility)
