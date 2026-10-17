@@ -12,8 +12,8 @@
 ---
 
 ## 👥 Team Information
-- **Team Name:** Team S3 Trotter
-- **Institution / Affiliation:** SRM University - AP & quanTA / University of Saskatchewan
+- **Team Name:** Organic Particles
+- **Institution / Affiliation:** SRM University - AP 
 - **Track:** Quantum Simulation (Problem Code: `S3`)
 
 ---
