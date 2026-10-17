@@ -1,0 +1,7 @@
+Benchmark,Architecture,Transpiled_Depth,2Q_Gates,SWAP_Gates,Measured_Energy,Mitigated_Energy,Raw_Total_Error,Mitigated_Total_Error,Noisy_State_Fidelity
+5-Spin Open Chain (OBC N=5),Processor A (5Q T-Tree),64,33,3,-3.2365 +/- 0.0517,-3.3513 +/- 0.0535,19.09% +/- 1.29%,16.22% +/- 1.34%,64.16%
+5-Spin Open Chain (OBC N=5),"Processor B Tree Variant (9Q Tree, 8 edges)",39,24,0,-3.3673 +/- 0.0531,-3.4870 +/- 0.0553,15.82% +/- 1.33%,12.82% +/- 1.38%,81.32%
+5-Spin Open Chain (OBC N=5),"Processor B Primary (9Q Slide 4 Graph, 12 edges)",39,24,0,-3.3505 +/- 0.0475,-3.4693 +/- 0.0495,16.24% +/- 1.19%,13.27% +/- 1.24%,81.32%
+5-Spin Periodic Ring (PBC N=5),Processor A (5Q T-Tree),96,57,9,-3.8293 +/- 0.0568,-3.9714 +/- 0.0590,23.41% +/- 1.14%,20.57% +/- 1.18%,65.91%
+5-Spin Periodic Ring (PBC N=5),"Processor B Tree Variant (9Q Tree, 8 edges)",96,57,9,-3.8332 +/- 0.0459,-3.9748 +/- 0.0475,23.34% +/- 0.92%,20.50% +/- 0.95%,65.91%
+5-Spin Periodic Ring (PBC N=5),"Processor B Primary (9Q Slide 4 Graph, 12 edges)",60,30,0,-4.2194 +/- 0.0579,-4.3760 +/- 0.0598,15.61% +/- 1.16%,12.48% +/- 1.20%,77.86%
