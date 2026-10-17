@@ -71,12 +71,12 @@ def cached_sweep(J, h, time, num_qubits, two_q_error, pbc, order):
 
 
 PRESETS = {
-    "Default TFIM":         dict(J=1.0, h=0.5, T=1.0, N=4, err=1.0, pbc=False, order=1),
-    "Critical Point (h=J)": dict(J=1.0, h=1.0, T=1.0, N=4, err=1.0, pbc=False, order=1),
-    "Periodic Ring":        dict(J=1.0, h=0.5, T=1.0, N=4, err=1.0, pbc=True,  order=1),
-    "2nd Order Strang":     dict(J=1.0, h=0.5, T=1.0, N=4, err=1.0, pbc=False, order=2),
-    "Long Time":            dict(J=1.0, h=0.5, T=2.0, N=4, err=1.0, pbc=False, order=1),
-    "Strong Field":         dict(J=0.5, h=1.5, T=1.0, N=4, err=1.0, pbc=False, order=1),
+    "Default TFIM":         dict(J=1.0, h=0.5, T=1.0, N=4, err=0.5, pbc=False, order=1),
+    "Critical Point (h=J)": dict(J=1.0, h=1.0, T=1.0, N=4, err=0.5, pbc=False, order=1),
+    "Periodic Ring":        dict(J=1.0, h=0.5, T=1.0, N=4, err=0.5, pbc=True,  order=1),
+    "2nd Order Strang":     dict(J=1.0, h=0.5, T=1.0, N=4, err=0.5, pbc=False, order=2),
+    "Long Time":            dict(J=1.0, h=0.5, T=2.0, N=4, err=0.5, pbc=False, order=1),
+    "Strong Field":         dict(J=0.5, h=1.5, T=1.0, N=4, err=0.5, pbc=False, order=1),
 }
 DEFAULTS = PRESETS["Default TFIM"]
 
@@ -166,13 +166,13 @@ def main():
     plt.close(fig)
 
     if p["periodic"]:
-        st.info("⚠️ **Periodic boundary active:** Closing the boundary ring on tree topologies requires routing SWAP gates. "
-                "Processor A routes through its central hub, while Processor B routes across heavy-hex tree branches.")
+        st.info("⚠️ **Periodic boundary active:** On tree topologies, closing the boundary ring requires routing SWAP gates. "
+                "Processor B's Slide 4 graph contains native cycles that embed closed rings with zero SWAPs.")
 
     st.markdown("### 📋 Parametric Sweep Results")
     st.markdown("**Processor A (5Q T-Shape)**")
     st.dataframe(df_A, use_container_width=True, hide_index=True)
-    st.markdown("**Processor B (7Q Heavy-Hex)**")
+    st.markdown("**Processor B (9Q Slide 4 Graph)**")
     st.dataframe(df_B, use_container_width=True, hide_index=True)
 
     col_csv, col_json = st.columns(2)

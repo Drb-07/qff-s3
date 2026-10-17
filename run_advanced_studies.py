@@ -33,7 +33,7 @@ proc_A = load_processor(PROJECT_ROOT / 'processors' / 'processor_A.json')
 proc_B = load_processor(PROJECT_ROOT / 'processors' / 'processor_B.json')
 
 
-def make_noise(two_q_err=0.01, single_q_err=0.001, readout_err=0.02):
+def make_noise(two_q_err=0.005, single_q_err=0.001, readout_err=0.01):
     noise = NoiseModel()
     noise.add_all_qubit_quantum_error(depolarizing_error(single_q_err, 1), ['x', 'sx', 'rz'])
     noise.add_all_qubit_quantum_error(depolarizing_error(two_q_err, 2), ['cx'])
@@ -49,15 +49,16 @@ NUM_QUBITS = 4
 J = 1.0
 h = 0.5
 TIME = 1.0
-SHOTS = 2048
+SHOTS = 4096
 STEPS = [1, 2, 3, 4, 5, 6, 8, 10]
+SEEDS = [42, 43, 44, 45, 46]
 
 sim_pbc = create_ising_chain(num_qubits=NUM_QUBITS, J=J, h=h, periodic=True)
 exact_state_pbc = sim_pbc.exact_evolved_state(None, TIME)
 exact_E_pbc = sim_pbc.exact_energy_expectation(exact_state_pbc)
 
-aer_A = AerSimulator(noise_model=make_noise(0.01))
-aer_B = AerSimulator(noise_model=make_noise(0.01))
+aer_A = AerSimulator(noise_model=make_noise(0.005, 0.001, 0.01))
+aer_B = AerSimulator(noise_model=make_noise(0.005, 0.001, 0.01))
 
 pbc_records = []
 for n in STEPS:
@@ -74,19 +75,26 @@ for n in STEPS:
     tA, rA = transpile_with_routing_analysis(qc_b, proc_A, optimization_level=1, seed_transpiler=42)
     tAz, _ = transpile_with_routing_analysis(qc_z, proc_A, optimization_level=1, seed_transpiler=42)
     tAx, _ = transpile_with_routing_analysis(qc_x, proc_A, optimization_level=1, seed_transpiler=42)
-    counts_Az = aer_A.run(tAz, shots=SHOTS, seed_simulator=42).result().get_counts()
-    counts_Ax = aer_A.run(tAx, shots=SHOTS, seed_simulator=42).result().get_counts()
-    eA, _ = sim_pbc.compute_energy_from_counts(counts_Az, counts_Ax, SHOTS)
-    tot_err_A = abs(eA - exact_E_pbc) / abs(exact_E_pbc)
-
+    
     # Proc B with exact SWAPs
     tB, rB = transpile_with_routing_analysis(qc_b, proc_B, optimization_level=1, seed_transpiler=42)
     tBz, _ = transpile_with_routing_analysis(qc_z, proc_B, optimization_level=1, seed_transpiler=42)
     tBx, _ = transpile_with_routing_analysis(qc_x, proc_B, optimization_level=1, seed_transpiler=42)
-    counts_Bz = aer_B.run(tBz, shots=SHOTS, seed_simulator=42).result().get_counts()
-    counts_Bx = aer_B.run(tBx, shots=SHOTS, seed_simulator=42).result().get_counts()
-    eB, _ = sim_pbc.compute_energy_from_counts(counts_Bz, counts_Bx, SHOTS)
-    tot_err_B = abs(eB - exact_E_pbc) / abs(exact_E_pbc)
+
+    eA_seeds, eB_seeds = [], []
+    for s in SEEDS:
+        counts_Az = aer_A.run(tAz, shots=SHOTS, seed_simulator=s).result().get_counts()
+        counts_Ax = aer_A.run(tAx, shots=SHOTS, seed_simulator=s).result().get_counts()
+        eA_val, _ = sim_pbc.compute_energy_from_counts(counts_Az, counts_Ax, SHOTS)
+        eA_seeds.append(eA_val)
+
+        counts_Bz = aer_B.run(tBz, shots=SHOTS, seed_simulator=s).result().get_counts()
+        counts_Bx = aer_B.run(tBx, shots=SHOTS, seed_simulator=s).result().get_counts()
+        eB_val, _ = sim_pbc.compute_energy_from_counts(counts_Bz, counts_Bx, SHOTS)
+        eB_seeds.append(eB_val)
+
+    tot_err_A = abs(float(np.mean(eA_seeds)) - exact_E_pbc) / abs(exact_E_pbc)
+    tot_err_B = abs(float(np.mean(eB_seeds)) - exact_E_pbc) / abs(exact_E_pbc)
 
     pbc_records.append({
         'steps': n,
@@ -137,29 +145,38 @@ exact_E_obc = sim_obc.exact_energy_expectation(sim_obc.exact_evolved_state(None,
 
 order_records = []
 for n in STEPS:
+    # Order 1
     sv_1 = sim_obc.ideal_statevector(TIME, n, order=1)
     e_trot_1 = sim_obc.exact_energy_expectation(sv_1)
     err_trot_1 = abs(e_trot_1 - exact_E_obc) / abs(exact_E_obc)
     qc_b1 = sim_obc.build_trotter_circuit(TIME, n, order=1, basis=None)
     t1, _ = transpile_with_routing_analysis(qc_b1, proc_B, optimization_level=1, seed_transpiler=42)
-
     qcz_1, _ = transpile_with_routing_analysis(sim_obc.build_trotter_circuit(TIME, n, order=1, basis='Z'), proc_B, optimization_level=1, seed_transpiler=42)
     qcx_1, _ = transpile_with_routing_analysis(sim_obc.build_trotter_circuit(TIME, n, order=1, basis='X'), proc_B, optimization_level=1, seed_transpiler=42)
-    e_noisy_1, _ = sim_obc.compute_energy_from_counts(aer_B.run(qcz_1, shots=SHOTS, seed_simulator=42).result().get_counts(),
-                                                      aer_B.run(qcx_1, shots=SHOTS, seed_simulator=42).result().get_counts(), SHOTS)
-    err_tot_1 = abs(e_noisy_1 - exact_E_obc) / abs(exact_E_obc)
 
+    # Order 2 (Strang)
     sv_2 = sim_obc.ideal_statevector(TIME, n, order=2)
     e_trot_2 = sim_obc.exact_energy_expectation(sv_2)
     err_trot_2 = abs(e_trot_2 - exact_E_obc) / abs(exact_E_obc)
     qc_b2 = sim_obc.build_trotter_circuit(TIME, n, order=2, basis=None)
     t2, _ = transpile_with_routing_analysis(qc_b2, proc_B, optimization_level=1, seed_transpiler=42)
-
     qcz_2, _ = transpile_with_routing_analysis(sim_obc.build_trotter_circuit(TIME, n, order=2, basis='Z'), proc_B, optimization_level=1, seed_transpiler=42)
     qcx_2, _ = transpile_with_routing_analysis(sim_obc.build_trotter_circuit(TIME, n, order=2, basis='X'), proc_B, optimization_level=1, seed_transpiler=42)
-    e_noisy_2, _ = sim_obc.compute_energy_from_counts(aer_B.run(qcz_2, shots=SHOTS, seed_simulator=42).result().get_counts(),
-                                                      aer_B.run(qcx_2, shots=SHOTS, seed_simulator=42).result().get_counts(), SHOTS)
-    err_tot_2 = abs(e_noisy_2 - exact_E_obc) / abs(exact_E_obc)
+
+    e1_seeds, e2_seeds = [], []
+    for s in SEEDS:
+        res_z1 = aer_B.run(qcz_1, shots=SHOTS, seed_simulator=s).result().get_counts()
+        res_x1 = aer_B.run(qcx_1, shots=SHOTS, seed_simulator=s).result().get_counts()
+        e1_val, _ = sim_obc.compute_energy_from_counts(res_z1, res_x1, SHOTS)
+        e1_seeds.append(e1_val)
+
+        res_z2 = aer_B.run(qcz_2, shots=SHOTS, seed_simulator=s).result().get_counts()
+        res_x2 = aer_B.run(qcx_2, shots=SHOTS, seed_simulator=s).result().get_counts()
+        e2_val, _ = sim_obc.compute_energy_from_counts(res_z2, res_x2, SHOTS)
+        e2_seeds.append(e2_val)
+
+    err_tot_1 = abs(float(np.mean(e1_seeds)) - exact_E_obc) / abs(exact_E_obc)
+    err_tot_2 = abs(float(np.mean(e2_seeds)) - exact_E_obc) / abs(exact_E_obc)
 
     order_records.append({
         'steps': n,
@@ -214,9 +231,13 @@ for err_2q in noise_rates:
     for n in STEPS:
         qcz, _ = transpile_with_routing_analysis(sim_obc.build_trotter_circuit(TIME, n, order=1, basis='Z'), proc_B, optimization_level=1, seed_transpiler=42)
         qcx, _ = transpile_with_routing_analysis(sim_obc.build_trotter_circuit(TIME, n, order=1, basis='X'), proc_B, optimization_level=1, seed_transpiler=42)
-        e_meas, _ = sim_obc.compute_energy_from_counts(sim_noise.run(qcz, shots=SHOTS, seed_simulator=42).result().get_counts(),
-                                                      sim_noise.run(qcx, shots=SHOTS, seed_simulator=42).result().get_counts(), SHOTS)
-        tot_err = abs(e_meas - exact_E_obc) / abs(exact_E_obc)
+        meas_seeds = []
+        for s in SEEDS:
+            res_z = sim_noise.run(qcz, shots=SHOTS, seed_simulator=s).result().get_counts()
+            res_x = sim_noise.run(qcx, shots=SHOTS, seed_simulator=s).result().get_counts()
+            e_meas_val, _ = sim_obc.compute_energy_from_counts(res_z, res_x, SHOTS)
+            meas_seeds.append(e_meas_val)
+        tot_err = abs(float(np.mean(meas_seeds)) - exact_E_obc) / abs(exact_E_obc)
         step_errs.append({'n': n, 'err': tot_err})
 
     best = min(step_errs, key=lambda x: x['err'])
