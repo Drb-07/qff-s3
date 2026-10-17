@@ -1,6 +1,0 @@
-two_qubit_error_rate,empirical_n_star,analytical_n_continuous,analytical_n_rounded,min_achieved_error
-0.2%,4,5.0,5,12.77%
-0.5%,3,3.16,3,16.23%
-1.0%,3,2.24,2,21.72%
-2.0%,2,1.58,2,29.48%
-4.0%,2,1.12,1,42.15%

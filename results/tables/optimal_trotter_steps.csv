@@ -1,3 +1,0 @@
-Processor,Topology,Optimal_n,Min_Total_Error,Depth_at_Opt,2Q_Gates_at_Opt,SWAPs_at_Opt,Trotter_Error_at_Opt,Noise_Error_at_Opt
-Processor A,T-Shaped Tree (5Q),3,0.1622558593749997,36,18,0,0.04115237570267624,0.12110348367232344
-Processor B,Heavy-Hex-Inspired Graph (9Q),3,0.1622558593749997,36,18,0,0.04115237570267624,0.12110348367232344
